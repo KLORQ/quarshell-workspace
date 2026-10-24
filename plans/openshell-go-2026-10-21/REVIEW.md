@@ -43,11 +43,11 @@
 
 **Приёмка:** одинаковые YAML/JSON результаты для absent, null, empty object, false, zero, empty list, unknown field; golden corpus сверяется с закреплённым upstream.
 
-### R03 · P1 · Закрытие platform-event канала завершает весь комбинированный watch
+### R03 · Resolved · Закрытие platform-event канала завершает весь комбинированный watch
 
-**Код:** [rpc_watch.go](../../quarshell-gateway/internal/httpapi/rpc_watch.go#L105), `WatchSandbox`, ветка `case result, ok := <-platformEvents`.
+**Исторический код:** [`WatchSandbox`](../../quarshell-gateway/internal/transport/applicationgrpc/sandbox_watch.go#L242), ветка чтения `platformEvents`.
 
-При `ok == false` handler возвращает nil даже при активных `FollowLogs` и `FollowStatus`. `bridgeBackendPlatformEvents` закрывает канал при EOF backend stream. Поэтому конечный backend event stream может завершить выдачу логов и статусов работающего sandbox. Это вывод по явному control flow; специальный комбинированный runtime regression в этой сессии не выполнялся.
+В исходном ревью закрытие `platformEvents` ошибочно завершало комбинированный watch. Текущая реализация отключает только этот источник через `platformEvents = nil` и продолжает обслуживать остальные каналы. Регрессия покрыта `TestWatchSandboxContinuesLogsAfterPlatformEventStreamCloses` в [`sandbox_watch_test.go`](../../quarshell-gateway/internal/transport/applicationgrpc/sandbox_watch_test.go).
 
 **Исправление:** явно определить семантику закрытия каждого источника. При независимом окончании одного источника отключить его канал (`nil`), остальные продолжить. При неожиданном EOF требующего непрерывности backend — reconnect с cursor либо явная `Unavailable`, без успешного молчаливого завершения. Завершать весь watch только по заданному stop condition, отмене или определённой ошибке.
 
@@ -65,7 +65,7 @@
 
 ### R05 · P1 · Реестр evidence противоречит рабочей копии
 
-**Историческое evidence:** на момент этого ревью compatibility matrix и gap register находились в `quarshell-gateway/internal/httpapi/testdata/`; эти артефакты удалены при перестройке inventory. Текущие источники: [`plans/inventory/features.yaml`](../inventory/features.yaml) и [`plans/REMAINING.md`](../../REMAINING.md). Старые выводы ниже описывают состояние на дату ревью и не являются актуальным machine-checked gate.
+**Историческое evidence:** на момент этого ревью compatibility matrix и gap register находились в `quarshell-gateway/internal/httpapi/testdata/`; эти артефакты удалены при перестройке inventory. Текущие источники: [`inventory/features.yaml`](../inventory/features.yaml) и [`REMAINING.md`](../REMAINING.md). Старые выводы ниже описывают состояние на дату ревью и не являются актуальным machine-checked gate.
 
 Найдены пять ссылок на два отсутствующих файла: `remote_compute_engine_test.go` и `driver/backend_test.go`, в трёх feature rows. Текущий реестр упоминает compatibility adapter и отсутствие readiness/configuration handlers, хотя native Backend и соответствующие handlers уже присутствуют. В документации опубликованные зависимости названы падающим gate, а gap register помечает published standalone как verified.
 
@@ -83,13 +83,13 @@
 
 ### G02 · P1 · Stable placeholders и token grants не доведены end-to-end
 
-[provider_credentials_runtime.go:180](../../quarshell-gateway/internal/httpapi/provider_credentials_runtime.go#L180) исключает credentials с `TokenGrant` или `StablePlaceholder`. При этом proxy уже содержит grant/placeholder primitives. Наличие этих primitives не доказывает рабочую цепочку gateway → supervisor → proxy.
+Текущие точки реализации: [`GetSandboxProviderEnvironment`](../../quarshell-gateway/internal/transport/applicationgrpc/reports.go#L130), [`ExchangeProviderSubjectToken`](../../quarshell-gateway/internal/transport/applicationgrpc/provider_credentials.go#L171) и [proxy token-grant resolution](../../quarshell-proxy/proxy/token_grant.go#L84). Наличие primitives не доказывает полную рабочую цепочку gateway → supervisor → proxy.
 
 **Работа:** policy-bound handles, provider attachment epoch, runtime installation ACK, refresh/expiry/revoke, rejection старой generation, managed files и endpoint bindings. Сохранить отказ при отсутствии binding до готовности всей цепочки; не открывать выдачу plaintext как способ закрыть gap.
 
 ### G03 · P1 · Peer RPC представлены отказами
 
-[openshell_provider_readiness.go:456](../../quarshell-gateway/internal/httpapi/openshell_provider_readiness.go#L456): `PeerReportProviderReadiness`, `PeerReportEndpointStatus`, `PeerGetSandboxProviderStatus`, `PeerRelay` вызывают `peerRelayGapError`.
+Текущие заглушки: [`PeerReportProviderReadiness`, `PeerReportEndpointStatus`, `PeerGetSandboxProviderStatus`](../../quarshell-gateway/internal/transport/applicationgrpc/runtime.go#L589); [peer relay implementation](../../quarshell-gateway/internal/transport/applicationgrpc/peer_relay.go#L17) уже существует, но требует межрепличной acceptance.
 
 **Работа:** peer identity, session ownership, workspace authorization, bounded bidirectional relay, fencing, restart/reconnect и конечные retry budgets. Это обязательный этап полного переноса, даже если первый инженерный milestone запускается на одном gateway.
 

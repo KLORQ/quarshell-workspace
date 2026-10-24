@@ -184,7 +184,7 @@ rows:
   evidence_level: null
   artifact: null
   last_verified: null
-  notes: global/sandbox, versions, ACK, draft/approve/edit/undo/history
+  notes: 'Global policy history Get/List now has admin-gated scope validation and pagination (plans/evidence/runs/gateway-global-policy-history-2026-10-24.md). Sandbox configuration admission now persists and fences supervisor instances (plans/evidence/runs/gateway-configuration-admission-2026-10-24.md). The aggregate lifecycle remains unverified: desired config delivery, provisioning timeout/cleanup, global policy mutation, activation ACK lifecycle, and complete draft edit/undo/history acceptance remain open.'
 - id: OS-FS
   feature_id: OS-FS
   owner: isolation
@@ -324,7 +324,7 @@ rows:
   evidence_level: null
   artifact: null
   last_verified: null
-  notes: PeerRelay/readiness/endpoint/provider status
+  notes: 'PeerRelay/readiness/endpoint/provider status. Local readiness reports now enforce durable supervisor ownership, monotonic sequence/config revision and exact-body retries; desired config revision authority, peer forwarding and cross-replica acceptance remain open (plans/evidence/runs/gateway-provider-readiness-2026-10-24.md).'
 - id: OS-PROVER
   feature_id: OS-PROVER
   owner: prover
@@ -338,7 +338,7 @@ rows:
   evidence_level: null
   artifact: null
   last_verified: null
-  notes: Policy containment, risk queries, counterexample, coverage, timeout
+  notes: 'Unsupported Z3 errors now map to the distinct fail-closed Unsupported relation; solver timeout/other errors remain Inconclusive (plans/evidence/runs/prover-fail-closed-2026-10-24.md). Full containment matcher coverage and risk-query parity remain incomplete, so this row stays unverified.'
 - id: OS-OBS
   feature_id: OS-OBS
   owner: telemetry + владельцы событий

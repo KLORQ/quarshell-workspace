@@ -50,14 +50,29 @@ Baseline поведения: OpenShell `v0.1.4`, SHA
 
 `rpc_fixture_test.go` фиксирует статус всех публичных RPC, но это только
 проверка fail-closed поведения и регистрации, не функциональная parity-матрица.
-В status fixtures остаются `Unimplemented` для `ExchangeProviderSubjectToken`,
-`PeerReportProviderReadiness`, `PeerReportEndpointStatus`,
-`PeerGetSandboxProviderStatus` и `IssueSandboxToken`; peer relay/report и часть
-runtime, SSH, token и stream paths требуют отдельных сценариев. Успешные
+Без настроенного OAuth client `ExchangeProviderSubjectToken` остаётся
+fail-closed `Unimplemented`; configured exchange проходит scope/expiry checks,
+но не заменяет проверку JWT-SVID доверенным issuer. `PeerReportProviderReadiness`,
+`PeerReportEndpointStatus`, `PeerGetSandboxProviderStatus` и `IssueSandboxToken`
+пока остаются заглушками. `PeerRelay` имеет локальную реализацию, но требует
+межрепличной acceptance; часть runtime, SSH, token и stream paths требует
+отдельных сценариев. Успешные
 fixtures должны проверять mutation, persistence, auth principal и ошибки.
 
 Общий `QUARSHELL_TOKEN` и статический `gateway-client` не заменяют upstream
 per-user/sandbox claims, scope authorization, TLS и rotation/replay semantics.
+Global policy history `GetSandboxPolicyStatus`/`ListSandboxPolicies` теперь
+работает с admin authorization, строгой проверкой формы scope и pagination;
+позитивные и отрицательные RPC tests описаны в
+`plans/evidence/runs/gateway-global-policy-history-2026-10-24.md`. Это закрывает
+только этот RPC path, не global policy mutation/activation и не полный Gateway
+RPC parity.
+`ReportSandboxConfiguration` теперь сохраняет PENDING/ACCEPTED/REJECTED admission,
+фенсит смену supervisor instance и проверяет точную policy/provider revision
+перед terminal admission. Это локальный durable path; проверка пока не атомарна
+относительно конкурентной policy/provider mutation. Подготовка desired config,
+provisioning timeout/cleanup lifecycle и межрепличное согласование ещё не закрыты.
+Тесты: `plans/evidence/runs/gateway-configuration-admission-2026-10-24.md`.
 Configured OAuth subject-token exchange теперь требует sandbox principal,
 совпадающий `sandbox_id` и активные generation/credential epoch; истёкший
 provider credential не обменивается. Это проверено transport regression tests,
@@ -67,13 +82,17 @@ provider credential не обменивается. Это проверено tra
 idempotency и credential non-disclosure; затем реализовывать RPC группами,
 удаляя stub только вместе с успешным functional fixture.
 
-Локальный `ReportProviderReadiness` теперь требует observation с положительным
-sequence и session ID текущего supervisor, сверяет durable lease и не переводит
-обычное startup-waiting состояние в terminal failure. Явные credential/policy/
-process installation failures остаются terminal для данной revision. Durable
-хранение/монотонность observation sequence, TTL, идентичность attachment/policy
-revision и peer forwarding ещё не реализованы; одноразовая session-проверка не
-закрывает эти acceptance rows.
+Локальный `ReportProviderReadiness` требует положительную sequence, session и
+instance текущего supervisor, сверяет durable lease, policy hash и активную
+provider-env revision. Gateway пока не имеет authoritative desired-config revision
+source; зато сохраняет и проверяет монотонность config revision в рамках session.
+Sequence/digest сохраняются вместе с sandbox: старый номер
+и повтор номера с изменённым телом отклоняются, точный retry разрешён для
+восстановления binding update. Startup-waiting не становится terminal failure;
+явные credential/policy/process installation failures переводят binding в failed.
+RPC acceptance покрывает только локальный Gateway: peer forwarding, полноценная
+attachment revision и cross-replica сценарии остаются открытыми.
+Детали и тесты: `plans/evidence/runs/gateway-provider-readiness-2026-10-24.md`.
 
 ### 2. Multi-Gateway и durable streams — P1
 
